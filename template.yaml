@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  A serverless application to translate Trino SQL to StarRocks SQL.
+
+Resources:
+  TrinoConverterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .  # Points to the directory with app.py and requirements.txt
+      Handler: app.handler # The file is 'app.py', the handler object is 'handler'
+      Runtime: python3.11
+      Architectures:
+        - x86_64
+      Events:
+        ApiEvent:
+          Type: Api # Creates an API Gateway
+          Properties:
+            Path: /{proxy+} # Forward all paths to the Flask app
+            Method: ANY
+
+Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL for your service"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
