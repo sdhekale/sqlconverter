@@ -2,10 +2,11 @@
 # A Flask application for AWS Lambda to transpile Trino SQL to StarRocks SQL.
 #
 # To deploy this to AWS Lambda:
-# 1. You will need 'Flask', 'aws-wsgi', and 'sqlglot'.
+# 1. You will need 'Flask', 'aws-wsgi', 'sqlglot', and 'mangum'.
 #    Create a requirements.txt file with:
 #    Flask
 #    aws-wsgi
+#    mangum
 #    sqlglot
 #
 # 2. When configuring your Lambda function in AWS, set the handler to:
@@ -20,7 +21,7 @@
 
 from flask import Flask, request, jsonify
 import awsgi
-from urllib.parse import urlencode
+from urllib.parse import parse_qs
 import logging
 import json
 import sqlglot
@@ -177,10 +178,17 @@ def lambda_handler(event, context):
         if path == '/{proxy+}':
             path = '/'
         
+        query_params = event.get('queryStringParameters')
+        if query_params is None:
+            # Parse rawQueryString when API Gateway does not populate
+            # queryStringParameters. parse_qs returns lists, so flatten them.
+            parsed = parse_qs(event.get('rawQueryString', ''))
+            query_params = {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}
+
         transformed_event = {
             'httpMethod': event['requestContext']['http']['method'],
-            'path': path, 
-            'queryStringParameters': event.get('queryStringParameters'),
+            'path': path,
+            'queryStringParameters': query_params,
             'headers': event.get('headers'),
             'body': event.get('body'),
             'isBase64Encoded': event.get('isBase64Encoded', False),
